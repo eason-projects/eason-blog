@@ -1,3 +1,8 @@
+rl:
+  label: Reinforcement Learning
+  permalink: /reinforcement-learning
+  description: Reinforcement Learning related posts
+
 facebook:
   label: Facebook
   permalink: /facebook

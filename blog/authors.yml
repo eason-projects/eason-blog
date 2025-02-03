@@ -1,3 +1,12 @@
+eason:
+  name: Eason Guo
+  title: Full Stack Developer
+  url: https://github.com/e10101
+  image_url: https://github.com/e10101.png
+  page: true
+  socials:
+    github: e10101
+
 yangshun:
   name: Yangshun Tay
   title: Front End Engineer @ Facebook
