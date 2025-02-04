@@ -3,6 +3,11 @@ rl:
   permalink: /reinforcement-learning
   description: Reinforcement Learning related posts
 
+ml:
+  label: Machine Learning
+  permalink: /machine-learning
+  description: Machine Learning related posts
+
 facebook:
   label: Facebook
   permalink: /facebook
