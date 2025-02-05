@@ -8,6 +8,16 @@ ml:
   permalink: /machine-learning
   description: Machine Learning related posts
 
+db:
+  label: Database
+  permalink: /database
+  description: Database related posts
+
+mlflow:
+  label: MLflow
+  permalink: /mlflow
+  description: MLflow related posts
+
 facebook:
   label: Facebook
   permalink: /facebook

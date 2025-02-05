@@ -1,8 +1,8 @@
 ---
-slug: mlflow-setup
-title: Setup MLflow
+slug: mlflow-intro
+title: MLflow使用介绍
 authors: eason
-tags: [ml]
+tags: [ml, mlflow]
 ---
 
 在我们使用Ray Tune的过程中，我们希望有一个开源且功能完备的实验追踪平台。
