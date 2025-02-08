@@ -96,7 +96,7 @@ e0a13ac10ec2   postgres   "docker-entrypoint.s…"   5 seconds ago   Up 4 second
 我们通过下面的命令，来启动相关的服务：
 
 ```shell
-docker run --link postgres_mlflow:db -p 8080:8080 adminer
+docker run --link postgres_mlflow:db -p 8080:8080 -d adminer
 ```
 
 上述命令中的`--link postgres_mlflow:db`的意思是，
