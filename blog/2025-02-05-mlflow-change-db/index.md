@@ -49,6 +49,7 @@ POSTGRES_DB=mlflow
 docker run --name postgres_mlflow \
     --env-file ./.env \
     -v ./data:/var/lib/postgresql/data \
+    -e PGDATA=/var/lib/postgresql/data/db-files/ \
     -p 5432:5432 \
     -d postgres
 ```

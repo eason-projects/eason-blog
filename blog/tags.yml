@@ -1,3 +1,8 @@
+nlp:
+  label: NLP
+  permalink: /nlp
+  description: Natural Language Processing (NLP) related posts
+
 rl:
   label: Reinforcement Learning
   permalink: /reinforcement-learning
