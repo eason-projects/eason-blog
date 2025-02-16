@@ -150,3 +150,6 @@ def generate_fasttext_data(customer_utterances, seller_utterances, output_path):
     print(f"Customer samples: {len(customer_utterances)}")
     print(f"Seller samples: {len(seller_utterances)}")
 ```
+
+文件处理后，共有训练数据238,275条，其中客户对话138,429条，客服对话99,846条。
+
