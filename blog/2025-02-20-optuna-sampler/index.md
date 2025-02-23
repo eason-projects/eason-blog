@@ -198,10 +198,17 @@ Python声明：
 
 ## 其他
 
+### AutoSampler
+
 Optuna团队也提出了AutoSampler的概念，其可以根据参数的搜索空间，
 以及验证次数来自动选择适合的采样器。
 
 详细描述在文章：[AutoSampler: Automatic Selection of Optimization Algorithms in Optuna](https://medium.com/optuna/autosampler-automatic-selection-of-optimization-algorithms-in-optuna-1443875fd8f9)
+
+### 贝叶斯优化
+
+类似在TPE采样器中看到的，贝叶斯优化就是通过构建一个针对目标函数的概率代理函数（模型）来表征参数的概率分布，
+然后通过不断迭代，更新该概率模型，并利用模型来选择下一个采样点，以使参数的采样逐步逼近最优解。
 
 ## 参考资料
 
