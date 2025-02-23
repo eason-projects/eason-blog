@@ -77,6 +77,7 @@ docker run -d \
     --name jupyter-ds \
     -p 28888:8888 \
     -v "$HOME/_jupyter_mount":/home/jovyan/work \
+    -v "$(pwd)":/home/jovyan/pwd \
     -v jupyter-data:/home/jovyan/.local \
     --user root \
     -e GRANT_SUDO=yes \
@@ -91,6 +92,7 @@ docker run -d \
 - `--name jupyter-ds`: 给容器指定一个名称，方便后续管理
 - `-p 28888:8888`: 将容器内的 8888 端口映射到主机的 28888 端口
 - `-v "$HOME/_jupyter_mount":/home/jovyan/work`: 将用户目录下的`_jupyter_mount`目录挂载到容器内的工作目录
+- `-v "$(pwd)":/home/jovyan/pwd`: 将当前目录挂载到容器中的`pwd`目录中
 - `-v jupyter-data:/home/jovyan/.local`: 创建一个命名卷来持久化存储用户安装的包
 - `--user root`: 以 root 用户运行容器
 - `-e GRANT_SUDO=yes`: 允许使用 sudo 命令

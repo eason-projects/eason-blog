@@ -28,3 +28,14 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+video {
+  display: block;
+  /* Ensure block-level behavior */
+  width: 640px;
+  /* Set a fixed width */
+  margin: 20px auto;
+  /* Centers the video horizontally, adds top/bottom margin */
+  max-width: 100%;
+  /* Make video responsive */
+}
