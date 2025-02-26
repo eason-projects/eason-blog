@@ -1,11 +1,77 @@
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 import torch
 import torch.nn as nn
 from PIL import Image
+import json
+import random
+import os
+
+class StrokeOrderDataset:
+    """Dataset for Chinese character stroke order training"""
+    
+    def __init__(self, stroke_order_path, stroke_table_path, image_folder, max_chars=1000):
+        # Load stroke table data
+        with open(stroke_table_path, 'r', encoding='utf-8') as f:
+            self.stroke_table = json.load(f)
+            
+        # Load character stroke data
+        with open(stroke_order_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Get first max_chars items
+            self.char_strokes = {k: v for i, (k, v) in enumerate(data.items()) if i < max_chars}
+        
+        self.image_folder = image_folder
+        self.characters = list(self.char_strokes.keys())
+        
+        # Create list of all possible stroke names
+        self.stroke_names = sorted(list(set(
+            stroke_info['name'] 
+            for stroke_info in self.stroke_table.values()
+        )))
+        self.stroke_names.append('END')  # Add END token
+        
+    def get_stroke_info(self, stroke_code):
+        """Get full stroke information from stroke code"""
+        if stroke_code in self.stroke_table:
+            return self.stroke_table[stroke_code]
+        return None
+    
+    def get_random_sample(self):
+        """Get a random character with its image and stroke sequence"""
+        char = random.choice(self.characters)
+        stroke_seq_codes = self.char_strokes[char]
+        
+        # Convert stroke sequence to full stroke information
+        strokes = []
+        for code in stroke_seq_codes:
+            stroke_info = self.get_stroke_info(code)
+            if stroke_info:
+                strokes.append(stroke_info['name'])
+        strokes.append('END')  # Add END token
+        
+        # Load image
+        image_path = os.path.join(self.image_folder, f"{len(strokes)-1}_{char}.png")
+        try:
+            image = Image.open(image_path).convert('L')  # Convert to grayscale
+            image = np.array(image)
+            if image.shape != (64, 64):
+                image = Image.fromarray(image).resize((64, 64))
+                image = np.array(image)
+            image = image.reshape(1, 64, 64)  # Add channel dimension
+        except FileNotFoundError:
+            print(f"Warning: Image not found for character {char}")
+            image = np.zeros((1, 64, 64), dtype=np.uint8)
+            
+        return {
+            'image': image,
+            'strokes': strokes,
+            'character': char,
+            'stroke_count': len(strokes) - 1  # Exclude END token
+        }
 
 class StrokeOrderEnv(gym.Env):
     """Custom Environment for Chinese character stroke order prediction"""
@@ -13,88 +79,83 @@ class StrokeOrderEnv(gym.Env):
     def __init__(self, image_size=64):
         super().__init__()
         
-        # 定义基本笔画类型（简化版本）
-        self.stroke_types = ['横', '竖', '撇', '捺', '点', '折', 'END']
+        # Initialize dataset
+        self.dataset = StrokeOrderDataset(
+            stroke_order_path='./stroke-order-jian.json',
+            stroke_table_path='./stroke-table.json',
+            image_folder='./images'
+        )
         
-        # 动作空间：离散的笔画类型选择
-        self.action_space = spaces.Discrete(len(self.stroke_types))
+        # Define action space using all possible stroke names
+        self.stroke_types = self.dataset.stroke_names
         
-        # 状态空间：图像(channel=1, H=64, W=64) + 已选笔画序列的one-hot编码(max_strokes=20)
-        self.image_size = image_size
-        self.max_strokes = 20
-        self.observation_space = spaces.Dict({
-            'image': spaces.Box(low=0, high=255, shape=(1, image_size, image_size), dtype=np.uint8),
-            'stroke_history': spaces.Box(low=0, high=1, shape=(self.max_strokes, len(self.stroke_types)), dtype=np.float32)
+        self.max_steps = 30  # Maximum number of steps per episode
+        
+        # Define action and observation spaces
+        self.action_space = gym.spaces.Discrete(len(self.stroke_types))
+        self.observation_space = gym.spaces.Dict({
+            'image': gym.spaces.Box(low=0, high=255, shape=(1, image_size, image_size), dtype=np.uint8),
+            'stroke_history': gym.spaces.Box(low=0, high=len(self.stroke_types)-1, shape=(self.max_steps,), dtype=np.int64)
         })
         
-        # 当前状态
-        self.current_image = None
-        self.current_strokes = []
-        self.target_strokes = []
+        self.current_step = 0
         
-    def reset(self):
-        """重置环境到初始状态"""
-        # 这里应该从数据集加载一个新的汉字图片和其正确的笔画序列
-        # 简化示例：假设我们有一个固定的测试用例
-        self.current_image = np.zeros((1, self.image_size, self.image_size), dtype=np.uint8)
-        self.current_strokes = []
-        self.target_strokes = ['横', '竖', '撇', 'END']  # 示例目标序列
+    def reset(self, seed=None, options=None):
+        """Reset environment to initial state"""
+        super().reset(seed=seed)
         
-        return self._get_observation()
+        # Get random character data
+        sample = self.dataset.get_random_sample()
+        self.current_image = sample['image']
+        self.target_strokes = sample['strokes']
+        # Initialize stroke history with -1 (no stroke)
+        self.current_strokes = np.full(self.max_steps, -1, dtype=np.int64)
+        self.current_step = 0
         
-    def step(self, action):
-        """执行一个动作并返回新的状态、奖励等"""
-        done = False
-        reward = 0
-        
-        # 获取选择的笔画
-        selected_stroke = self.stroke_types[action]
-        
-        # 如果选择了END
-        if selected_stroke == 'END':
-            done = True
-            # 如果所有笔画都正确且完成，给予额外奖励
-            if len(self.current_strokes) == len(self.target_strokes) - 1:
-                reward = 10
-            else:
-                reward = -5
-        else:
-            # 检查当前步骤是否正确
-            current_step = len(self.current_strokes)
-            if current_step < len(self.target_strokes) - 1:  # -1是因为不计算END
-                if selected_stroke == self.target_strokes[current_step]:
-                    reward = 1
-                    self.current_strokes.append(selected_stroke)
-                else:
-                    reward = -1
-                    done = True
-            else:
-                reward = -1
-                done = True
-        
-        return self._get_observation(), reward, done, {}
+        return self._get_observation(), {}
     
     def _get_observation(self):
-        """构建当前状态的观察"""
-        # 构建笔画历史的one-hot编码
-        stroke_history = np.zeros((self.max_strokes, len(self.stroke_types)))
-        for i, stroke in enumerate(self.current_strokes):
-            if i >= self.max_strokes:
-                break
-            stroke_idx = self.stroke_types.index(stroke)
-            stroke_history[i][stroke_idx] = 1
-            
+        """Get current observation state"""
         return {
             'image': self.current_image,
-            'stroke_history': stroke_history
+            'stroke_history': self.current_strokes
+        }
+    
+    def step(self, action):
+        """Execute one environment step"""
+        # Record the action in stroke history
+        self.current_strokes[self.current_step] = action
+        self.current_step += 1
+        
+        # Convert action index to stroke name
+        stroke = self.stroke_types[action]
+        
+        # Check if stroke matches target
+        correct_stroke = (self.current_step <= len(self.target_strokes) and 
+                         stroke == self.target_strokes[self.current_step-1])
+        
+        # Calculate reward
+        if correct_stroke:
+            reward = 1.0
+        else:
+            reward = -1.0
+        
+        # Check if episode is done
+        done = (self.current_step >= len(self.target_strokes) or 
+                self.current_step >= self.max_steps or 
+                not correct_stroke)
+        
+        return self._get_observation(), reward, done, False, {
+            'target_strokes': self.target_strokes,
+            'current_strokes': [self.stroke_types[i] for i in self.current_strokes if i >= 0]
         }
 
-# 自定义特征提取器
+# Custom feature extractor
 class CustomCombinedExtractor(nn.Module):
     def __init__(self, observation_space):
         super().__init__()
         
-        # CNN用于处理图像
+        # CNN for processing images
         self.cnn = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
@@ -105,36 +166,35 @@ class CustomCombinedExtractor(nn.Module):
             nn.Flatten()
         )
         
-        # 线性层用于处理笔画历史
+        # Linear layer for processing stroke history
+        stroke_history_size = observation_space['stroke_history'].shape[0]
         self.stroke_encoder = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(observation_space['stroke_history'].shape[0] * 
-                     observation_space['stroke_history'].shape[1], 128),
+            nn.Linear(stroke_history_size, 128),
             nn.ReLU()
         )
         
-        # 组合特征
+        # Combine features
         self.combined = nn.Sequential(
-            nn.Linear(16384 + 128, 512),  # 16384是CNN输出大小
+            nn.Linear(16384 + 128, 512),  # 16384 is CNN output size
             nn.ReLU()
         )
         
     def forward(self, observations):
-        # 处理图像
+        # Process image
         image_features = self.cnn(observations['image'].float())
         
-        # 处理笔画历史
+        # Process stroke history
         stroke_features = self.stroke_encoder(observations['stroke_history'].float())
         
-        # 组合特征
+        # Combine features
         combined_features = torch.cat([image_features, stroke_features], dim=1)
         return self.combined(combined_features)
 
 def train():
-    # 创建环境
+    # Create environment
     env = DummyVecEnv([lambda: StrokeOrderEnv()])
     
-    # 创建模型
+    # Create model
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,
     )
@@ -142,11 +202,29 @@ def train():
     model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
                 verbose=1, learning_rate=0.0003)
     
-    # 训练模型
+    # Train model
     model.learn(total_timesteps=100000)
     
-    # 保存模型
+    # Save model
     model.save("stroke_order_model")
 
 if __name__ == "__main__":
+    def test_dataset():
+        print("Testing dataset...")
+        dataset = StrokeOrderDataset(
+            stroke_order_path='./stroke-order-jian.json',
+            stroke_table_path='./stroke-table.json',
+            image_folder='./images'
+        )
+        print("Dataset loaded")
+        
+        sample = dataset.get_random_sample()
+        print(sample.keys())
+        print(sample['image'].shape)
+        print(sample['strokes'])
+        print(sample['character'])
+        print(sample['stroke_count'])
+
+    # test_dataset()
+
     train()

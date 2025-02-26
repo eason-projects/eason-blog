@@ -30,7 +30,19 @@ draft: true
 4. 在训练的过程中，我们可以知道每一个汉字的笔画顺序。但是在使用模型结果的时候，我们不知道画面中的汉字的正确笔画，我们希望完全依赖模型给我们结果。
 ```
 
+## Setup
+
+```bash
+# Cretae a venv
+python3 -m venv venv
+
+source venv/bin/activate
+
+pip3 install -r requirements.txt
+```
+
 ## AI提供的建议
 
 1. https://www.wenxiaobai.com/share/chat/f16629de-6eab-4efd-8b4f-b368f7a77e36
-2. 
+2. http://www.moe.gov.cn/jyb_sjzl/ziliao/A19/202103/W020210318300204215237.pdf
+3. 
