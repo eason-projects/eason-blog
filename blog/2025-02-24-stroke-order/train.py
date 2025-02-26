@@ -9,6 +9,7 @@ from PIL import Image
 import json
 import random
 import os
+from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 
 class StrokeOrderDataset:
     """Dataset for Chinese character stroke order training"""
@@ -179,6 +180,9 @@ class CustomCombinedExtractor(nn.Module):
             nn.ReLU()
         )
         
+        # Set the features dimension for stable-baselines3
+        self.features_dim = 512
+        
     def forward(self, observations):
         # Process image
         image_features = self.cnn(observations['image'].float())
@@ -190,9 +194,98 @@ class CustomCombinedExtractor(nn.Module):
         combined_features = torch.cat([image_features, stroke_features], dim=1)
         return self.combined(combined_features)
 
+class StrokeOrderEvalCallback(BaseCallback):
+    """Custom callback for evaluating stroke order prediction"""
+    
+    def __init__(self, eval_env, eval_freq=1000, n_eval_episodes=5, verbose=1):
+        super().__init__(verbose)
+        self.eval_env = eval_env
+        self.eval_freq = eval_freq
+        self.n_eval_episodes = n_eval_episodes
+        self.best_mean_reward = -np.inf
+        self.last_mean_reward = -np.inf
+        
+    def _on_step(self) -> bool:
+        if self.n_calls % self.eval_freq == 0:
+            # Use EvalCallback's evaluate method instead of custom implementation
+            # Create a temporary environment for evaluation
+            eval_env = StrokeOrderEnv()
+            
+            successes = 0
+            total_rewards = 0
+            stroke_accuracies = []
+            
+            for episode in range(self.n_eval_episodes):
+                # Reset environment
+                obs, _ = eval_env.reset()
+                done = False
+                episode_reward = 0
+                correct_strokes = 0
+                total_strokes = 0
+                
+                while not done:
+                    # Get action from model
+                    # Convert dict observation to a format the model can use
+                    obs_dict = {
+                        'image': np.expand_dims(obs['image'], axis=0),
+                        'stroke_history': np.expand_dims(obs['stroke_history'], axis=0)
+                    }
+                    
+                    action, _ = self.model.predict(obs_dict, deterministic=True)
+                    
+                    # Step environment with scalar action
+                    obs, reward, terminated, truncated, info = eval_env.step(action[0])
+                    
+                    # Check if episode is done
+                    done = terminated or truncated
+                    
+                    # Update metrics
+                    episode_reward += reward
+                    if reward > 0:
+                        correct_strokes += 1
+                    total_strokes += 1
+                
+                # Calculate episode metrics
+                success = episode_reward > 0
+                stroke_accuracy = correct_strokes / total_strokes if total_strokes > 0 else 0
+                
+                # Update overall metrics
+                successes += int(success)
+                total_rewards += episode_reward
+                stroke_accuracies.append(stroke_accuracy)
+            
+            # Calculate mean metrics
+            mean_reward = total_rewards / self.n_eval_episodes
+            mean_success_rate = successes / self.n_eval_episodes
+            mean_stroke_accuracy = sum(stroke_accuracies) / len(stroke_accuracies) if stroke_accuracies else 0
+            
+            # Log metrics
+            self.logger.record("eval/mean_reward", mean_reward)
+            self.logger.record("eval/success_rate", mean_success_rate)
+            self.logger.record("eval/stroke_accuracy", mean_stroke_accuracy)
+            
+            # Print evaluation results
+            if self.verbose > 0:
+                print(f"\nStep {self.n_calls}")
+                print(f"Eval success rate: {mean_success_rate:.2%}")
+                print(f"Eval mean reward: {mean_reward:.2f}")
+                print(f"Eval stroke accuracy: {mean_stroke_accuracy:.2%}")
+            
+            # Save best model
+            if mean_reward > self.best_mean_reward:
+                self.best_mean_reward = mean_reward
+                if self.verbose > 0:
+                    print(f"New best mean reward: {mean_reward:.2f}")
+                self.model.save("best_stroke_order_model")
+            
+            self.last_mean_reward = mean_reward
+            
+        return True
+
 def train():
-    # Create environment
+    # Create environments (one for training, one for evaluation)
     env = DummyVecEnv([lambda: StrokeOrderEnv()])
+    eval_env = DummyVecEnv([lambda: StrokeOrderEnv()])
     
     # Create model
     policy_kwargs = dict(
@@ -202,11 +295,23 @@ def train():
     model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
                 verbose=1, learning_rate=0.0003)
     
-    # Train model
-    model.learn(total_timesteps=100000)
+    # Create callback
+    eval_callback = StrokeOrderEvalCallback(
+        eval_env=eval_env,
+        eval_freq=1000,
+        n_eval_episodes=5,
+        verbose=1
+    )
     
-    # Save model
-    model.save("stroke_order_model")
+    # Train model with callback
+    model.learn(
+        total_timesteps=100000,
+        progress_bar=True,
+        callback=eval_callback
+    )
+    
+    # Save final model
+    model.save("final_stroke_order_model")
 
 if __name__ == "__main__":
     def test_dataset():
