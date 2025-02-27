@@ -418,5 +418,5 @@ if __name__ == "__main__":
 
     # Uncomment one of these:
     # train()
-    predict_strokes("best_stroke_order_model", num_samples=10)
-    # predict_strokes("final_stroke_order_model", num_samples=10)
+    # predict_strokes("best_stroke_order_model", num_samples=10)
+    predict_strokes("final_stroke_order_model", num_samples=10)
