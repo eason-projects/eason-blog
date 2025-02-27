@@ -107,6 +107,7 @@ class StrokeOrderEnv(gym.Env):
         
         # Get random character data
         sample = self.dataset.get_random_sample()
+        self.current_sample = sample
         self.current_image = sample['image']
         self.target_strokes = sample['strokes']
         # Initialize stroke history with -1 (no stroke)
@@ -313,6 +314,89 @@ def train():
     # Save final model
     model.save("final_stroke_order_model")
 
+def predict_strokes(model_path, num_samples=5):
+    """Load a trained model and predict stroke order for random characters"""
+    # Create environment
+    env = StrokeOrderEnv()
+    
+    # Load model without specifying policy_kwargs
+    model = PPO.load(model_path)
+    
+    print(f"\nTesting model: {model_path}")
+    print("-" * 50)
+    
+    # Track overall statistics
+    total_accuracy = 0
+    stroke_distribution = {}
+    
+    for i in range(num_samples):
+        # Reset environment to get a random character
+        obs, _ = env.reset()
+        done = False
+        
+        # Get character info - this is the actual Chinese character
+        sample = env.current_sample
+        char_symbol = sample['character']
+        
+        print(f"\nSample {i+1}: Character '{char_symbol}'")
+        print(f"Target strokes: {env.target_strokes}")
+        
+        # Track predicted strokes
+        predicted_strokes = []
+        
+        while not done:
+            # Prepare observation for model - convert to PyTorch tensors
+            obs_dict = {
+                'image': torch.tensor(np.expand_dims(obs['image'], axis=0), dtype=torch.float32),
+                'stroke_history': torch.tensor(np.expand_dims(obs['stroke_history'], axis=0), dtype=torch.float32)
+            }
+            
+            # Get model prediction
+            action, _states = model.predict(obs_dict, deterministic=True)
+            
+            # Convert action to stroke name
+            stroke_name = env.stroke_types[action[0]]
+            predicted_strokes.append(stroke_name)
+            
+            # Update stroke distribution statistics
+            if stroke_name in stroke_distribution:
+                stroke_distribution[stroke_name] += 1
+            else:
+                stroke_distribution[stroke_name] = 1
+            
+            # Step environment
+            obs, reward, terminated, truncated, info = env.step(action[0])
+            done = terminated or truncated
+            
+            # Stop if we predict END token
+            # if stroke_name == 'END':
+            #     break
+            if done:
+                break
+        
+        print(f"Predicted strokes: {predicted_strokes}")
+        
+        # Calculate accuracy
+        correct = 0
+        for j, (pred, target) in enumerate(zip(predicted_strokes, env.target_strokes)):
+            if pred == target:
+                correct += 1
+            else:
+                break
+                
+        accuracy = correct / len(env.target_strokes) if len(env.target_strokes) > 0 else 0
+        total_accuracy += accuracy
+        print(f"Accuracy: {accuracy:.2%}")
+        print("-" * 30)
+    
+    # Print overall statistics
+    print("\nOverall Statistics:")
+    print(f"Average accuracy: {(total_accuracy / num_samples):.2%}")
+    print("\nStroke distribution in predictions:")
+    sorted_strokes = sorted(stroke_distribution.items(), key=lambda x: x[1], reverse=True)
+    for stroke, count in sorted_strokes:
+        print(f"  {stroke}: {count} times ({count/sum(stroke_distribution.values()):.2%})")
+
 if __name__ == "__main__":
     def test_dataset():
         print("Testing dataset...")
@@ -332,4 +416,7 @@ if __name__ == "__main__":
 
     # test_dataset()
 
-    train()
+    # Uncomment one of these:
+    # train()
+    predict_strokes("best_stroke_order_model", num_samples=10)
+    # predict_strokes("final_stroke_order_model", num_samples=10)
