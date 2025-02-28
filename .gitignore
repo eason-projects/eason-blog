@@ -1,6 +1,8 @@
 .ipynb_checkpoints/
 .DS_Store
 
+/data/
+
 venv/
 
 # Logs
