@@ -178,6 +178,34 @@ mlflow server \
 这是因为我们启动了一个新的数据库，之前的记录在另外的地方。
 :::
 
+### （可选）使用Docker运行MLflow
+
+```bash
+docker run -p 8090:5000 \
+    --link postgres_mlflow:db \
+    --env-file .env \
+    -v ./artifacts=/mlflow/artifacts \
+    ghcr.io/mlflow/mlflow \
+    bash -c "python3 -m pip install pip --upgrade && python3 -m pip install psycopg2-binary && mlflow server"
+```
+
+使用上面的代码，我们可以使用Docker来运行我们的MLFlow服务。
+
+:::tip 请合理设置.env环境
+
+在上面的代码中，我们需要合理的设置`.env`文件的内容，其可包括如下内容：
+
+```env
+POSTGRES_USER=****
+POSTGRES_PASSWORD=****
+POSTGRES_DB=mlflow
+MLFLOW_BACKEND_STORE_URI=postgresql://****:****@db:5432/mlflow
+MLFLOW_HOST=0.0.0.0
+MLFLOW_PORT=5000
+```
+
+:::
+
 ### （可选）检查数据库
 
 在MLflow启动后，我们可以再次打开之前创建的Adminer工具，来查看数据库是否运行正常。
