@@ -284,6 +284,14 @@ class StrokeOrderEvalCallback(BaseCallback):
         return True
 
 def train():
+    # Check if MPS is available
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print("Using MPS device for training")
+    else:
+        device = torch.device("cpu")
+        print("MPS not available, using CPU")
+
     # Create environments (one for training, one for evaluation)
     env = DummyVecEnv([lambda: StrokeOrderEnv()])
     eval_env = DummyVecEnv([lambda: StrokeOrderEnv()])
@@ -294,7 +302,7 @@ def train():
     )
     
     model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
-                verbose=1, learning_rate=0.0003)
+                verbose=1, learning_rate=0.0003, device=device)
     
     # Create callback
     eval_callback = StrokeOrderEvalCallback(
@@ -418,5 +426,5 @@ if __name__ == "__main__":
 
     # Uncomment one of these:
     # train()
-    # predict_strokes("best_stroke_order_model", num_samples=10)
+    predict_strokes("best_stroke_order_model", num_samples=10)
     predict_strokes("final_stroke_order_model", num_samples=10)

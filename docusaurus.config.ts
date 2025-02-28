@@ -62,6 +62,12 @@ const config: Config = {
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
+          exclude: [
+            '**/venv/**'
+          ],
+          // Add these options to enable and configure the blog sidebar
+          blogSidebarTitle: 'All Posts',
+          blogSidebarCount: 'ALL',
         },
         theme: {
           customCss: './src/css/custom.css',
