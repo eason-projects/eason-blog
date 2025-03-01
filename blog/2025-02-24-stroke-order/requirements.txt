@@ -6,3 +6,4 @@ Pillow
 mlflow
 tqdm
 matplotlib
+torchvision

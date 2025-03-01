@@ -16,7 +16,7 @@ from train import StrokeOrderDataset, CustomCombinedExtractor
 class StrokeOrderPretrainDataset(Dataset):
     """Dataset for pretraining the CNN on stroke count prediction"""
     
-    def __init__(self, stroke_order_path, stroke_table_path, image_folder, max_chars=1000, train=True):
+    def __init__(self, stroke_order_path, stroke_table_path, image_folder, max_chars=1000, train=True, split_ratio=0.8):
         # Create the original dataset
         self.dataset = StrokeOrderDataset(
             stroke_order_path=stroke_order_path,
@@ -30,7 +30,7 @@ class StrokeOrderPretrainDataset(Dataset):
         random.seed(42)  # For reproducibility
         random.shuffle(all_chars)
         
-        split_idx = int(len(all_chars) * 0.8)
+        split_idx = int(len(all_chars) * split_ratio)
         if train:
             self.chars = all_chars[:split_idx]
         else:
@@ -308,7 +308,8 @@ def main():
             print("MPS not available, using CPU")
 
 
-        max_chars = 1000
+        max_chars = 7000
+        split_ratio = 0.9
         
         # Create datasets
         train_dataset = StrokeOrderPretrainDataset(
@@ -316,7 +317,8 @@ def main():
             stroke_table_path='./stroke-table.json',
             image_folder='./images',
             max_chars=max_chars,
-            train=True
+            train=True,
+            split_ratio=split_ratio
         )
         
         val_dataset = StrokeOrderPretrainDataset(
@@ -324,7 +326,8 @@ def main():
             stroke_table_path='./stroke-table.json',
             image_folder='./images',
             max_chars=max_chars,
-            train=False
+            train=False,
+            split_ratio=split_ratio
         )
         
         print(f"Train dataset size: {len(train_dataset)}")
@@ -422,7 +425,7 @@ def main():
         model.to(device)
         
         # Log model parameters
-        num_epochs = 20
+        num_epochs = 100
         learning_rate = 0.001
         
         # Log parameters to MLflow
