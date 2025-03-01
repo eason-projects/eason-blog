@@ -3,3 +3,6 @@ stable-baselines3[extra]
 torch
 numpy
 Pillow
+mlflow
+tqdm
+matplotlib
