@@ -20,6 +20,270 @@ from collections import Counter
 # Import the dataset class and model from pretrain_cnn.py
 from pretrain_cnn import StrokeOrderPretrainDataset
 
+# 添加数据增强类
+class AugmentedStrokeOrderDataset(Dataset):
+    """Dataset with augmentation for pretraining the CNN on stroke count prediction"""
+    
+    def __init__(self, base_dataset, augmentation_factor=10):
+        """
+        Args:
+            base_dataset: The original StrokeOrderPretrainDataset
+            augmentation_factor: Number of augmented versions to create for each sample
+        """
+        self.base_dataset = base_dataset
+        self.augmentation_factor = augmentation_factor
+        
+        # Define augmentation types
+        self.augmentation_types = [
+            "original",           # 0: No augmentation
+            "slight_rotation",    # 1: Slight rotation
+            "slight_translation", # 2: Slight translation
+            "slight_scaling",     # 3: Slight scaling
+            "slight_shear",       # 4: Slight shear
+            "slight_blur",        # 5: Slight blur
+            "elastic_deform",     # 6: Elastic deformation
+            "noise",              # 7: Add noise
+            "erosion",            # 8: Erosion - thins strokes
+            "dilation",           # 9: Dilation - thickens strokes
+            "combined_1",         # 10: Combined augmentation 1 (rotation + blur)
+            "combined_2"          # 11: Combined augmentation 2 (scaling + noise)
+        ]
+        
+        # Ensure we don't exceed the number of available augmentations
+        self.augmentation_factor = min(self.augmentation_factor, len(self.augmentation_types))
+    
+    def __len__(self):
+        return len(self.base_dataset) * self.augmentation_factor
+    
+    def __getitem__(self, idx):
+        # Determine which sample and which augmentation to use
+        base_idx = idx // self.augmentation_factor
+        aug_idx = idx % self.augmentation_factor
+        
+        # Get the base sample
+        base_sample = self.base_dataset[base_idx]
+        
+        # If it's the original (aug_idx=0), return the base sample directly
+        if aug_idx == 0:
+            return base_sample
+        
+        # For augmentations, convert tensor to PIL image
+        # The image tensor is in [0,1] range with shape [1, 64, 64]
+        image_tensor = base_sample['image']
+        
+        # Convert to numpy array in [0,255] range
+        image_np = (image_tensor.numpy().squeeze()).astype(np.uint8)
+        
+        # Create PIL image
+        image_pil = Image.fromarray(image_np)
+        
+        # Apply augmentation based on aug_idx
+        aug_type = self.augmentation_types[aug_idx]
+        
+        if aug_type == "slight_rotation":
+            # Rotation ±15 degrees
+            angle = random.uniform(-15, 15)
+            augmented_pil = image_pil.rotate(angle, resample=Image.BILINEAR, fillcolor=255)
+        
+        elif aug_type == "slight_translation":
+            # Translation up to 15% in each direction
+            width, height = image_pil.size
+            dx = int(random.uniform(-0.15, 0.15) * width)
+            dy = int(random.uniform(-0.15, 0.15) * height)
+            augmented_pil = ImageOps.expand(image_pil, border=(0, 0, 0, 0), fill=255)
+            augmented_pil = augmented_pil.transform(
+                (width, height),
+                Image.AFFINE,
+                (1, 0, dx, 0, 1, dy),
+                resample=Image.BILINEAR,
+                fillcolor=255
+            )
+        
+        elif aug_type == "slight_scaling":
+            # Scaling 85-115%
+            width, height = image_pil.size
+            scale = random.uniform(0.85, 1.15)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            augmented_pil = image_pil.resize((new_width, new_height), Image.BILINEAR)
+            
+            # Center the resized image
+            result = Image.new(image_pil.mode, (width, height), 255)
+            paste_x = (width - new_width) // 2
+            paste_y = (height - new_height) // 2
+            result.paste(augmented_pil, (paste_x, paste_y))
+            augmented_pil = result
+        
+        elif aug_type == "slight_shear":
+            # Slight shear
+            width, height = image_pil.size
+            shear_factor = random.uniform(-0.2, 0.2)
+            augmented_pil = image_pil.transform(
+                (width, height),
+                Image.AFFINE,
+                (1, shear_factor, 0, 0, 1, 0),
+                resample=Image.BILINEAR,
+                fillcolor=255
+            )
+        
+        elif aug_type == "slight_blur":
+            # Slight Gaussian blur
+            augmented_pil = image_pil.filter(ImageFilter.GaussianBlur(radius=random.uniform(0.3, 1.0)))
+        
+        elif aug_type == "elastic_deform":
+            # Elastic deformation - simulates natural handwriting variations
+            # Convert to binary image
+            threshold = 128
+            binary_np = np.array(image_pil) < threshold
+            
+            # Parameters for elastic deformation
+            alpha = random.uniform(8, 12)  # Intensity of deformation
+            sigma = random.uniform(3, 6)   # Smoothness of deformation
+            
+            # Create random displacement fields
+            shape = binary_np.shape
+            dx = gaussian_filter((np.random.rand(*shape) * 2 - 1), sigma) * alpha
+            dy = gaussian_filter((np.random.rand(*shape) * 2 - 1), sigma) * alpha
+            
+            # Create mesh grid
+            x, y = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+            
+            # Displace mesh grid
+            indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1))
+            
+            # Map coordinates
+            distorted = map_coordinates(binary_np, indices, order=1).reshape(shape)
+            
+            # Convert back to uint8
+            augmented_np = np.where(distorted, 0, 255).astype(np.uint8)
+            augmented_pil = Image.fromarray(augmented_np)
+        
+        elif aug_type == "noise":
+            # Add salt and pepper noise
+            augmented_np = np.array(image_pil)
+            
+            # Add random black dots (pepper)
+            pepper_prob = random.uniform(0.001, 0.015)
+            pepper_mask = np.random.random(augmented_np.shape) < pepper_prob
+            augmented_np[pepper_mask] = 0
+            
+            # Add random white dots (salt) - less noticeable on white background
+            salt_prob = random.uniform(0.001, 0.008)
+            salt_mask = np.random.random(augmented_np.shape) < salt_prob
+            augmented_np[salt_mask] = 255
+            
+            augmented_pil = Image.fromarray(augmented_np)
+        
+        elif aug_type == "erosion":
+            # Erosion - thins the strokes
+            augmented_pil = image_pil.filter(ImageFilter.MinFilter(3))
+        
+        elif aug_type == "dilation":
+            # Dilation - thickens the strokes
+            augmented_pil = image_pil.filter(ImageFilter.MaxFilter(3))
+            
+        elif aug_type == "combined_1":
+            # Combined augmentation 1: rotation + blur
+            # First apply rotation
+            angle = random.uniform(-10, 10)
+            temp_pil = image_pil.rotate(angle, resample=Image.BILINEAR, fillcolor=255)
+            
+            # Then apply blur
+            augmented_pil = temp_pil.filter(ImageFilter.GaussianBlur(radius=random.uniform(0.2, 0.7)))
+            
+        elif aug_type == "combined_2":
+            # Combined augmentation 2: scaling + noise
+            # First apply scaling
+            width, height = image_pil.size
+            scale = random.uniform(0.9, 1.1)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            temp_pil = image_pil.resize((new_width, new_height), Image.BILINEAR)
+            
+            # Center the resized image
+            result = Image.new(image_pil.mode, (width, height), 255)
+            paste_x = (width - new_width) // 2
+            paste_y = (height - new_height) // 2
+            result.paste(temp_pil, (paste_x, paste_y))
+            temp_pil = result
+            
+            # Then add noise
+            augmented_np = np.array(temp_pil)
+            
+            # Add random black dots (pepper)
+            pepper_prob = random.uniform(0.001, 0.01)
+            pepper_mask = np.random.random(augmented_np.shape) < pepper_prob
+            augmented_np[pepper_mask] = 0
+            
+            augmented_pil = Image.fromarray(augmented_np)
+        
+        else:
+            # Fallback to original
+            augmented_pil = image_pil
+        
+        # Convert back to tensor in the same format as the original
+        # First convert to numpy array in [0,1] range
+        augmented_np = np.array(augmented_pil) / 255.0
+        
+        # Then convert to tensor with shape [1, 64, 64]
+        augmented_tensor = torch.from_numpy(augmented_np).float().unsqueeze(0)
+        
+        # Create augmented sample
+        augmented_sample = {
+            'image': augmented_tensor,
+            'stroke_count': base_sample['stroke_count'],
+            'first_stroke': base_sample['first_stroke'],
+            'character': base_sample['character']
+        }
+        
+        return augmented_sample
+
+def visualize_augmentations(dataset, num_samples=5):
+    """Visualize augmentations for a few samples"""
+    
+    # Select random samples
+    indices = random.sample(range(len(dataset.base_dataset)), num_samples)
+    
+    # Create figure
+    fig, axes = plt.subplots(num_samples, dataset.augmentation_factor, figsize=(20, 3 * num_samples))
+    
+    for i, base_idx in enumerate(indices):
+        # Get original sample
+        base_sample = dataset.base_dataset[base_idx]
+        char = base_sample['character']
+        stroke_count = base_sample['stroke_count']
+        
+        # Display original and augmented versions
+        for j in range(dataset.augmentation_factor):
+            # Calculate index in augmented dataset
+            aug_idx = base_idx * dataset.augmentation_factor + j
+            
+            # Get augmented sample
+            aug_sample = dataset[aug_idx]
+            
+            # Display image
+            ax = axes[i, j]
+            
+            # Convert tensor to numpy for display
+            if j == 0:
+                # Original image
+                img = base_sample['image'].numpy().squeeze()
+                title = f"{char} (Original)\nStrokes: {stroke_count}"
+            else:
+                # Augmented image - should maintain original black-on-white pattern
+                img = aug_sample['image'].squeeze().numpy()
+                title = f"{char} ({dataset.augmentation_types[j]})"
+            
+            # Use grayscale colormap for all images
+            ax.imshow(img, cmap='gray')
+            ax.set_title(title)
+            ax.axis('off')
+    
+    plt.tight_layout()
+    plt.savefig('augmentation_examples.png')
+    print("Augmentation examples saved to 'augmentation_examples.png'")
+    plt.show()
+
 # 定义改进的CNN模型
 class ImprovedCNNModel(nn.Module):
     """Improved CNN model for stroke count prediction with ResNet backbone"""

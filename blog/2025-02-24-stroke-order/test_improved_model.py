@@ -11,7 +11,7 @@ import seaborn as sns
 
 # 导入数据集和模型
 from pretrain_cnn import StrokeOrderPretrainDataset
-from pretrain_cnn_augmented import ImprovedCNNModel
+from pretrain_cnn_resnet import ImprovedCNNModel
 
 def test_model(model_path, max_chars=7000, batch_size=32):
     """测试改进后的模型性能"""
