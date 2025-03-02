@@ -4,75 +4,11 @@ import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 import torch
-import torch.nn as nn
-from PIL import Image
-import json
-import random
-import os
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 
-class StrokeOrderDataset:
-    """Dataset for Chinese character stroke order training"""
-    
-    def __init__(self, stroke_order_path, stroke_table_path, image_folder, max_chars=1000):
-        # Load stroke table data
-        with open(stroke_table_path, 'r', encoding='utf-8') as f:
-            self.stroke_table = json.load(f)
-            
-        # Load character stroke data
-        with open(stroke_order_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            # Get first max_chars items
-            self.char_strokes = {k: v for i, (k, v) in enumerate(data.items()) if i < max_chars}
-        
-        self.image_folder = image_folder
-        self.characters = list(self.char_strokes.keys())
-        
-        # Create list of all possible stroke names
-        self.stroke_names = sorted(list(set(
-            stroke_info['name'] 
-            for stroke_info in self.stroke_table.values()
-        )))
-        self.stroke_names.append('END')  # Add END token
-        
-    def get_stroke_info(self, stroke_code):
-        """Get full stroke information from stroke code"""
-        if stroke_code in self.stroke_table:
-            return self.stroke_table[stroke_code]
-        return None
-    
-    def get_random_sample(self):
-        """Get a random character with its image and stroke sequence"""
-        char = random.choice(self.characters)
-        stroke_seq_codes = self.char_strokes[char]
-        
-        # Convert stroke sequence to full stroke information
-        strokes = []
-        for code in stroke_seq_codes:
-            stroke_info = self.get_stroke_info(code)
-            if stroke_info:
-                strokes.append(stroke_info['name'])
-        strokes.append('END')  # Add END token
-        
-        # Load image
-        image_path = os.path.join(self.image_folder, f"{len(strokes)-1}_{char}.png")
-        try:
-            image = Image.open(image_path).convert('L')  # Convert to grayscale
-            image = np.array(image)
-            if image.shape != (64, 64):
-                image = Image.fromarray(image).resize((64, 64))
-                image = np.array(image)
-            image = image.reshape(1, 64, 64)  # Add channel dimension
-        except FileNotFoundError:
-            print(f"Warning: Image not found for character {char}")
-            image = np.zeros((1, 64, 64), dtype=np.uint8)
-            
-        return {
-            'image': image,
-            'strokes': strokes,
-            'character': char,
-            'stroke_count': len(strokes) - 1  # Exclude END token
-        }
+# Import the pretrained CNN model
+from dataset import StrokeOrderDataset, PretrainedCombinedExtractor
+from models import MobileNetV3Model
 
 class StrokeOrderEnv(gym.Env):
     """Custom Environment for Chinese character stroke order prediction"""
@@ -151,49 +87,6 @@ class StrokeOrderEnv(gym.Env):
             'target_strokes': self.target_strokes,
             'current_strokes': [self.stroke_types[i] for i in self.current_strokes if i >= 0]
         }
-
-# Custom feature extractor
-class CustomCombinedExtractor(nn.Module):
-    def __init__(self, observation_space):
-        super().__init__()
-        
-        # CNN for processing images
-        self.cnn = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Flatten()
-        )
-        
-        # Linear layer for processing stroke history
-        stroke_history_size = observation_space['stroke_history'].shape[0]
-        self.stroke_encoder = nn.Sequential(
-            nn.Linear(stroke_history_size, 128),
-            nn.ReLU()
-        )
-        
-        # Combine features
-        self.combined = nn.Sequential(
-            nn.Linear(16384 + 128, 512),  # 16384 is CNN output size
-            nn.ReLU()
-        )
-        
-        # Set the features dimension for stable-baselines3
-        self.features_dim = 512
-        
-    def forward(self, observations):
-        # Process image
-        image_features = self.cnn(observations['image'].float())
-        
-        # Process stroke history
-        stroke_features = self.stroke_encoder(observations['stroke_history'].float())
-        
-        # Combine features
-        combined_features = torch.cat([image_features, stroke_features], dim=1)
-        return self.combined(combined_features)
 
 class StrokeOrderEvalCallback(BaseCallback):
     """Custom callback for evaluating stroke order prediction"""
@@ -296,9 +189,13 @@ def train():
     env = DummyVecEnv([lambda: StrokeOrderEnv()])
     eval_env = DummyVecEnv([lambda: StrokeOrderEnv()])
     
-    # Create model
+    # Create model with pretrained feature extractor
     policy_kwargs = dict(
-        features_extractor_class=CustomCombinedExtractor,
+        features_extractor_class=PretrainedCombinedExtractor,
+        # You can pass additional arguments to the feature extractor
+        features_extractor_kwargs=dict(
+            pretrained_model_path='augmented_model.pth'  # Path to the pretrained model
+        )
     )
     
     model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
@@ -425,6 +322,6 @@ if __name__ == "__main__":
     # test_dataset()
 
     # Uncomment one of these:
-    # train()
-    predict_strokes("best_stroke_order_model", num_samples=10)
-    predict_strokes("final_stroke_order_model", num_samples=10)
+    train()
+    # predict_strokes("best_stroke_order_model", num_samples=10)
+    # predict_strokes("final_stroke_order_model", num_samples=10)
