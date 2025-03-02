@@ -222,15 +222,15 @@ class MobileNetV3LiteModel(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         
         # 获取特征维度 - 需要根据截断的网络计算
-        # MobileNetV3-Small 在第8个块后的特征维度是96
-        self.feature_dim = 96
+        # MobileNetV3-Small 在第8个块后的特征维度是48 (not 96)
+        self.feature_dim = 48
         
-        # 笔画数预测头
+        # 笔画数预测头 - 改为回归模型
         self.stroke_count_head = nn.Sequential(
             nn.Linear(self.feature_dim, 64),
             nn.ReLU(inplace=True),
             nn.Dropout(0.3),
-            nn.Linear(64, num_strokes + 1)  # +1 for 0 strokes
+            nn.Linear(64, 1)  # 输出单个值作为笔画数预测
         )
         
         # 第一个笔画预测头
@@ -248,11 +248,11 @@ class MobileNetV3LiteModel(nn.Module):
         features = torch.flatten(x, 1)
         
         # 预测笔画数和第一个笔画
-        stroke_count_logits = self.stroke_count_head(features)
+        stroke_count = self.stroke_count_head(features).squeeze(-1)  # 移除最后一个维度
         first_stroke_logits = self.first_stroke_head(features)
         
         return {
-            'stroke_count': stroke_count_logits,
+            'stroke_count': stroke_count,  # 现在是回归值而不是分类logits
             'first_stroke': first_stroke_logits
         }
 

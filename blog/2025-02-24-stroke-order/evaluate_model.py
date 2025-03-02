@@ -9,10 +9,11 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-# Import the necessary classes from pretrain_cnn.py
-from pretrain_cnn import StrokeOrderPretrainDataset, CNNModel
+# Import the necessary classes from pretrain_cnn.py and pretrain_cnn_augmented.py
+from pretrain_cnn import MobileNetV3Model, StrokeOrderPretrainDataset, CNNModel
+from pretrain_cnn_augmented import MobileNetV3LiteModel
 
-def evaluate_model(model_path, num_samples=20, random_samples=True, display_images=True):
+def evaluate_model(model_path, num_samples=20, random_samples=True, display_images=True, model_type="mobilenetv3lite"):
     """
     Evaluate the pretrained CNN model and print predictions for characters.
     
@@ -21,6 +22,7 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
         num_samples: Number of samples to evaluate
         random_samples: If True, select random samples; otherwise, use the first num_samples
         display_images: If True, display the character images
+        model_type: Type of model to use ("cnn", "mobilenetv3", or "mobilenetv3lite")
     """
     # Check if MPS is available
     if torch.backends.mps.is_available():
@@ -36,7 +38,7 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
         stroke_table_path='./stroke-table.json',
         image_folder='./images',
         max_chars=7000,
-        train=False,
+        train=True,
         split_ratio=0.9
     )
     
@@ -55,8 +57,18 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
     
     print(f"Using model max stroke count: {model_max_stroke_count}")
     
-    # Create model with the correct dimensions
-    model = CNNModel(model_max_stroke_count, num_stroke_types)
+    # Create model with the correct dimensions based on model_type
+    if model_type == "cnn":
+        model = CNNModel(model_max_stroke_count, num_stroke_types)
+        is_regression = False
+    elif model_type == "mobilenetv3":
+        model = MobileNetV3Model(model_max_stroke_count, num_stroke_types)
+        is_regression = True
+    elif model_type == "mobilenetv3lite":
+        model = MobileNetV3LiteModel(model_max_stroke_count, num_stroke_types)
+        is_regression = True
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
     
     # Load pretrained model
     print(f"Loading pretrained model from {model_path}")
@@ -78,6 +90,7 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
     
     correct_count = 0
     correct_first = 0
+    total_count_error = 0.0
     
     # Store results for display
     results = []
@@ -98,10 +111,21 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
             outputs = model(image)
             
             # Get predicted stroke count and first stroke
-            _, pred_count = torch.max(outputs['stroke_count'], 1)
-            _, pred_first = torch.max(outputs['first_stroke'], 1)
+            if is_regression:
+                # For regression model (MobileNetV3Lite)
+                pred_count_raw = outputs['stroke_count'].item()
+                pred_count = round(pred_count_raw)  # Round to nearest integer
+                count_error = abs(pred_count - actual_count)
+                total_count_error += count_error
+                count_correct = count_error < 1  # Consider correct if error < 1
+            else:
+                # For classification models (CNN, MobileNetV3)
+                _, pred_count = torch.max(outputs['stroke_count'], 1)
+                pred_count = pred_count.item()
+                count_correct = pred_count == actual_count
             
-            pred_count = pred_count.item()
+            # Get predicted first stroke (same for all models)
+            _, pred_first = torch.max(outputs['first_stroke'], 1)
             pred_first = pred_first.item()
             
             # Get stroke names
@@ -109,7 +133,6 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
             pred_first_name = val_dataset.dataset.stroke_names[pred_first]
             
             # Check if predictions are correct
-            count_correct = pred_count == actual_count
             first_correct = pred_first == actual_first
             
             if count_correct:
@@ -137,7 +160,14 @@ def evaluate_model(model_path, num_samples=20, random_samples=True, display_imag
     print("-" * 80)
     accuracy_count = correct_count / len(indices) * 100
     accuracy_first = correct_first / len(indices) * 100
-    print(f"Stroke Count Accuracy: {accuracy_count:.2f}% ({correct_count}/{len(indices)})")
+    
+    if is_regression:
+        avg_count_error = total_count_error / len(indices)
+        print(f"Stroke Count Accuracy: {accuracy_count:.2f}% ({correct_count}/{len(indices)})")
+        print(f"Average Stroke Count Error: {avg_count_error:.2f}")
+    else:
+        print(f"Stroke Count Accuracy: {accuracy_count:.2f}% ({correct_count}/{len(indices)})")
+    
     print(f"First Stroke Accuracy: {accuracy_first:.2f}% ({correct_first}/{len(indices)})")
     
     # Display images if requested
@@ -164,22 +194,44 @@ def display_character_images(results):
         img = result['image'].squeeze()  # Remove channel dimension
         ax.imshow(img, cmap='gray')
         
-        # Set title with character and predictions
-        count_color = 'green' if result['count_correct'] else 'red'
-        first_color = 'green' if result['first_correct'] else 'red'
+        # Instead of trying to display the Chinese character directly in the title,
+        # we'll use the character image itself and add text annotations for predictions
         
-        title = f"{result['char']}\n"
-        title += f"Count: {result['actual_count']}→{result['pred_count']}\n"
-        title += f"First: {result['actual_first']}→{result['pred_first']}"
+        # Create a simple title without the Chinese character
+        title = f"Strokes: {result['actual_count']}"
+        if result['count_correct']:
+            title += f" ✓"
+        else:
+            title += f" → {result['pred_count']} ✗"
+            
+        title += f"\nFirst: {result['actual_first']}"
+        if result['first_correct']:
+            title += f" ✓"
+        else:
+            title += f" → {result['pred_first']} ✗"
         
-        ax.set_title(title, fontsize=10)
+        ax.set_title(title, fontsize=9)
         ax.axis('off')
     
     plt.tight_layout()
-    plt.savefig('character_evaluation.png')
-    print(f"Character images saved to 'character_evaluation.png'")
+    
+    # Save figure
+    try:
+        plt.savefig('character_evaluation.png', bbox_inches='tight')
+        print(f"Character images saved to 'character_evaluation.png'")
+    except Exception as e:
+        print(f"Error saving figure: {e}")
+    
     plt.show()
 
 if __name__ == "__main__":
-    model_path = './pretrained_model.pth'
-    evaluate_model(model_path, num_samples=20, random_samples=True, display_images=True) 
+    model_path = './augmented_model_final_20250302_145758.pth'
+    # Specify the model type based on the model you're evaluating
+    # Options: "cnn", "mobilenetv3", or "mobilenetv3lite"
+    evaluate_model(
+        model_path, 
+        num_samples=100, 
+        random_samples=True, 
+        display_images=True,
+        model_type="mobilenetv3"  # Change this based on your model
+    ) 

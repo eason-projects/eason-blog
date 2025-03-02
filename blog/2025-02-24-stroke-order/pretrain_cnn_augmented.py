@@ -16,7 +16,7 @@ from scipy.ndimage import gaussian_filter, map_coordinates
 from datetime import datetime
 
 # Import the dataset class and model from pretrain_cnn.py
-from pretrain_cnn import MobileNetV3Model, StrokeOrderPretrainDataset, CNNModel
+from pretrain_cnn import MobileNetV3LiteModel, MobileNetV3Model, StrokeOrderPretrainDataset, CNNModel
 
 class AugmentedStrokeOrderDataset(Dataset):
     """Dataset with augmentation for pretraining the CNN on stroke count prediction"""
@@ -325,8 +325,10 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
         # Create model
         # model = CNNModel(max_stroke_count, num_stroke_types)
         model = MobileNetV3Model(max_stroke_count, num_stroke_types)
+        # model = MobileNetV3LiteModel(max_stroke_count, num_stroke_types)
 
         augmented_model_path = 'augmented_model_mobilenetv3.pth'
+        # augmented_model_path = 'augmented_model_mobilenetv3_lite.pth'
 
         if os.path.exists(augmented_model_path):
             print(f"Loading previously augmented model from {augmented_model_path} as starting point")
