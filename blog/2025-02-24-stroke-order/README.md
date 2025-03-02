@@ -8,6 +8,10 @@
 - `pretrain_cnn_resnet.py`: 改进的ResNet模型、数据增强和平衡采样实现
 - `train_with_augmentation.py`: 使用数据增强训练改进模型的脚本
 - `test_improved_model.py`: 测试改进模型性能的脚本
+- `train.py`: 使用强化学习训练笔顺预测模型的脚本
+- `run_mlflow_server.py`: 启动MLflow服务器的脚本
+- `load_from_mlflow.py`: 从MLflow加载和评估模型的脚本
+- `MLFLOW_README.md`: MLflow集成的详细说明
 
 ## 环境要求
 
@@ -17,7 +21,9 @@
 - Matplotlib
 - tqdm
 - scikit-learn
-- MLflow (可选)
+- MLflow
+- Gymnasium
+- Stable-Baselines3
 
 ## 数据准备
 
@@ -28,27 +34,37 @@
 
 ## 使用方法
 
+### 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 启动MLflow服务器
+
+在训练或评估模型之前，启动MLflow服务器以跟踪实验：
+
+```bash
+python run_mlflow_server.py
+```
+
+MLflow UI将在 http://localhost:8090 可访问。
+
 ### 训练模型
 
-使用数据增强训练改进的模型：
+#### 使用数据增强训练CNN模型：
 
 ```bash
 python train_with_augmentation.py --max_chars 7000 --augmentation_factor 12 --batch_size 32 --num_epochs 100 --learning_rate 0.0003 --use_focal_loss --use_mlflow --stroke_count_loss_weight 2.0 --output_dir ./output
 ```
 
+#### 使用强化学习训练笔顺预测模型：
+
 ```bash
-python train_with_augmentation.py \
-    --max_chars 7000 \
-    --augmentation_factor 12 \
-    --visualize_augmentations \
-    --batch_size 32 \
-    --num_epochs 100 \
-    --learning_rate 0.0003 \
-    --use_focal_loss \
-    --use_mlflow \
-    --stroke_count_loss_weight 2.0 \
-    --output_dir ./output
+python train.py
 ```
+
+训练过程中的指标、参数和模型将自动记录到MLflow中。
 
 #### 主要参数说明：
 
@@ -67,11 +83,49 @@ python train_with_augmentation.py \
 
 ### 测试模型
 
-测试训练好的模型：
+#### 测试CNN模型：
 
 ```bash
 python test_improved_model.py --model_path ./output/best_model_by_acc.pth --max_chars 1000 --batch_size 32
 ```
+
+#### 测试强化学习模型：
+
+```bash
+# 修改train.py中的代码，取消注释predict_strokes行
+python train.py
+```
+
+#### 从MLflow加载和评估模型：
+
+```bash
+# 列出可用的MLflow运行
+python load_from_mlflow.py --list-runs
+
+# 加载并评估特定运行的模型
+python load_from_mlflow.py --run-id <RUN_ID>
+```
+
+## MLflow集成
+
+本项目使用MLflow进行实验跟踪和模型管理：
+
+1. **实验跟踪**：
+   - 自动记录训练参数（学习率、批量大小等）
+   - 记录评估指标（奖励、成功率、笔画准确率）
+   - 可视化训练进度
+
+2. **模型管理**：
+   - 保存最佳模型和最终模型
+   - 记录模型性能指标
+   - 方便模型比较和选择
+
+3. **预测结果记录**：
+   - 记录每个样本的预测结果
+   - 计算并记录整体准确率
+   - 分析笔画分布
+
+有关MLflow集成的详细信息，请参阅 [MLFLOW_README.md](./MLFLOW_README.md)。
 
 ## 改进策略
 
@@ -104,6 +158,11 @@ python test_improved_model.py --model_path ./output/best_model_by_acc.pth --max_
    - 梯度裁剪
    - 基于准确率保存模型
 
+6. **强化学习方法**：
+   - 使用PPO算法训练笔顺预测模型
+   - 自定义环境和奖励函数
+   - 使用预训练CNN模型作为特征提取器
+
 ## 结果分析
 
 训练过程会生成以下可视化结果：
@@ -118,6 +177,8 @@ python test_improved_model.py --model_path ./output/best_model_by_acc.pth --max_
 - `confusion_matrix.png`: 笔画数预测的混淆矩阵
 - `accuracy_by_stroke_count.png`: 各笔画数类别的准确率
 - `error_samples.png`: 错误预测样例可视化
+
+此外，所有训练和评估结果都可以在MLflow UI中查看和比较。
 
 ## 许可证
 
