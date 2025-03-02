@@ -133,6 +133,14 @@ self.augmentation_types = [
 
 但是我们训练后，其笔画数的预测，依然在40%左右徘徊。
 
+### 切换网络架构
+
+因此我们切换到了同样比较Lite的MobileNet V3。
+
+但是切换后，效果不明显。
+
+### 修改Stroke Count为Regression任务
+
 
 
 

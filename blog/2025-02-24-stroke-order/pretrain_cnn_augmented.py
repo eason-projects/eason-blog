@@ -352,7 +352,7 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
         
         # Define loss function and optimizer
         criterion = {
-            'stroke_count': nn.CrossEntropyLoss(),
+            'stroke_count': nn.MSELoss(),
             'first_stroke': nn.CrossEntropyLoss()
         }
         
@@ -389,14 +389,14 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
             # Training phase
             model.train()
             train_loss = 0.0
-            train_stroke_count_correct = 0
+            train_stroke_count_error = 0.0
             train_first_stroke_correct = 0
             train_samples = 0
             
             for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]"):
                 # Move data to device
                 images = batch['image'].to(device)
-                stroke_counts = batch['stroke_count'].to(device)
+                stroke_counts = batch['stroke_count'].float().to(device)
                 first_strokes = batch['first_stroke'].to(device)
                 
                 # Zero the parameter gradients
@@ -418,8 +418,9 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
                 train_loss += loss.item() * images.size(0)
                 
                 # Calculate accuracy
-                _, stroke_count_preds = torch.max(outputs['stroke_count'], 1)
-                train_stroke_count_correct += torch.sum(stroke_count_preds == stroke_counts).item()
+                train_stroke_count_error += torch.sum(torch.abs(outputs['stroke_count'] - stroke_counts)).item()
+                # _, stroke_count_preds = torch.max(outputs['stroke_count'], 1)
+                # train_stroke_count_correct += torch.sum(stroke_count_preds == stroke_counts).item()
                 
                 _, first_stroke_preds = torch.max(outputs['first_stroke'], 1)
                 train_first_stroke_correct += torch.sum(first_stroke_preds == first_strokes).item()
@@ -428,13 +429,13 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
             
             # Calculate epoch statistics
             train_loss = train_loss / train_samples
-            train_stroke_count_acc = train_stroke_count_correct / train_samples
+            train_stroke_count_mae = train_stroke_count_error / train_samples
             train_first_stroke_acc = train_first_stroke_correct / train_samples
             
             # Validation phase
             model.eval()
             val_loss = 0.0
-            val_stroke_count_correct = 0
+            val_stroke_count_error = 0.0
             val_first_stroke_correct = 0
             val_samples = 0
             
@@ -442,7 +443,7 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
                 for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]"):
                     # Move data to device
                     images = batch['image'].to(device)
-                    stroke_counts = batch['stroke_count'].to(device)
+                    stroke_counts = batch['stroke_count'].float().to(device)
                     first_strokes = batch['first_stroke'].to(device)
                     
                     # Forward pass
@@ -457,8 +458,9 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
                     val_loss += loss.item() * images.size(0)
                     
                     # Calculate accuracy
-                    _, stroke_count_preds = torch.max(outputs['stroke_count'], 1)
-                    val_stroke_count_correct += torch.sum(stroke_count_preds == stroke_counts).item()
+                    val_stroke_count_error += torch.sum(torch.abs(outputs['stroke_count'] - stroke_counts)).item()
+                    # _, stroke_count_preds = torch.max(outputs['stroke_count'], 1)
+                    # val_stroke_count_correct += torch.sum(stroke_count_preds == stroke_counts).item()
                     
                     _, first_stroke_preds = torch.max(outputs['first_stroke'], 1)
                     val_first_stroke_correct += torch.sum(first_stroke_preds == first_strokes).item()
@@ -467,7 +469,7 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
             
             # Calculate epoch statistics
             val_loss = val_loss / val_samples
-            val_stroke_count_acc = val_stroke_count_correct / val_samples
+            val_stroke_count_mae = val_stroke_count_error / val_samples
             val_first_stroke_acc = val_first_stroke_correct / val_samples
             
             # Update learning rate scheduler
@@ -475,15 +477,15 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
             
             # Print epoch statistics
             print(f"Epoch {epoch+1}/{num_epochs}:")
-            print(f"  Train Loss: {train_loss:.4f}, Stroke Count Acc: {train_stroke_count_acc:.4f}, First Stroke Acc: {train_first_stroke_acc:.4f}")
-            print(f"  Val Loss: {val_loss:.4f}, Stroke Count Acc: {val_stroke_count_acc:.4f}, First Stroke Acc: {val_first_stroke_acc:.4f}")
+            print(f"  Train Loss: {train_loss:.4f}, Stroke Count MAE: {train_stroke_count_mae:.4f}, First Stroke Acc: {train_first_stroke_acc:.4f}")
+            print(f"  Val Loss: {val_loss:.4f}, Stroke Count MAE: {val_stroke_count_mae:.4f}, First Stroke Acc: {val_first_stroke_acc:.4f}")
             
             # Log metrics to MLflow
             mlflow.log_metrics({
                 "train_loss": train_loss,
                 "val_loss": val_loss,
-                "train_stroke_count_acc": train_stroke_count_acc,
-                "val_stroke_count_acc": val_stroke_count_acc,
+                "train_stroke_count_mae": train_stroke_count_mae,
+                "val_stroke_count_mae": val_stroke_count_mae,
                 "train_first_stroke_acc": train_first_stroke_acc,
                 "val_first_stroke_acc": val_first_stroke_acc
             }, step=epoch)

@@ -169,7 +169,10 @@ class MobileNetV3Model(nn.Module):
             nn.Linear(self.feature_dim, 128),
             nn.Hardswish(),
             nn.Dropout(0.2),
-            nn.Linear(128, num_strokes + 1)  # +1 for 0 strokes
+            nn.Linear(128, 64),
+            nn.Hardswish(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 1),
         )
         
         # 第一个笔画预测头
@@ -187,11 +190,11 @@ class MobileNetV3Model(nn.Module):
         features = torch.flatten(x, 1)
         
         # 预测笔画数和第一个笔画
-        stroke_count_logits = self.stroke_count_head(features)
+        stroke_count = self.stroke_count_head(features)
         first_stroke_logits = self.first_stroke_head(features)
         
         return {
-            'stroke_count': stroke_count_logits,
+            'stroke_count': stroke_count.squeeze(-1),
             'first_stroke': first_stroke_logits
         }
 
