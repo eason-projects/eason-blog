@@ -16,7 +16,7 @@ from scipy.ndimage import gaussian_filter, map_coordinates
 from datetime import datetime
 
 # Import the dataset class and model from pretrain_cnn.py
-from pretrain_cnn import StrokeOrderPretrainDataset, CNNModel
+from pretrain_cnn import MobileNetV3Model, StrokeOrderPretrainDataset, CNNModel
 
 class AugmentedStrokeOrderDataset(Dataset):
     """Dataset with augmentation for pretraining the CNN on stroke count prediction"""
@@ -323,20 +323,30 @@ def train_model_with_augmentation(max_chars=7000, augmentation_factor=10, batch_
         print(f"Number of stroke types: {num_stroke_types}")
         
         # Create model
-        model = CNNModel(max_stroke_count, num_stroke_types)
-        
-        # Check if an augmented model exists to start from
-        augmented_model_path = 'augmented_model.pth'
-        pretrained_model_path = 'pretrained_model.pth'
-        
+        # model = CNNModel(max_stroke_count, num_stroke_types)
+        model = MobileNetV3Model(max_stroke_count, num_stroke_types)
+
+        augmented_model_path = 'augmented_model_mobilenetv3.pth'
+
         if os.path.exists(augmented_model_path):
             print(f"Loading previously augmented model from {augmented_model_path} as starting point")
             model.load_state_dict(torch.load(augmented_model_path, map_location=device))
-        elif os.path.exists(pretrained_model_path):
-            print(f"Loading pretrained model from {pretrained_model_path} as starting point")
-            model.load_state_dict(torch.load(pretrained_model_path, map_location=device))
         else:
             print("No pretrained model found, starting from scratch")
+        
+        
+        # # Check if an augmented model exists to start from
+        # augmented_model_path = 'augmented_model.pth'
+        # pretrained_model_path = 'pretrained_model.pth'
+        
+        # if os.path.exists(augmented_model_path):
+        #     print(f"Loading previously augmented model from {augmented_model_path} as starting point")
+        #     model.load_state_dict(torch.load(augmented_model_path, map_location=device))
+        # elif os.path.exists(pretrained_model_path):
+        #     print(f"Loading pretrained model from {pretrained_model_path} as starting point")
+        #     model.load_state_dict(torch.load(pretrained_model_path, map_location=device))
+        # else:
+        #     print("No pretrained model found, starting from scratch")
         
         model.to(device)
         
