@@ -114,6 +114,27 @@ class CNNModel(nn.Module):
 
 ### 数据增强
 
+我们添加了一些增强的策略，其内容如下：
+
+```python
+self.augmentation_types = [
+    "original",           # 0: No augmentation
+    "slight_rotation",    # 1: Slight rotation
+    "slight_translation", # 2: Slight translation
+    "slight_scaling",     # 3: Slight scaling
+    "slight_shear",       # 4: Slight shear
+    "slight_blur",        # 5: Slight blur
+    "elastic_deform",     # 6: Elastic deformation
+    "noise",              # 7: Add noise
+    "erosion",            # 8: Erosion - thins strokes
+    "dilation"            # 9: Dilation - thickens strokes
+]
+```
+
+但是我们训练后，其笔画数的预测，依然在40%左右徘徊。
+
+
+
 
 
 ## AI提供的建议
