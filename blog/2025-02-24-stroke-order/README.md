@@ -11,7 +11,6 @@
 - `train.py`: 使用强化学习训练笔顺预测模型的脚本
 - `run_mlflow_server.py`: 启动MLflow服务器的脚本
 - `load_from_mlflow.py`: 从MLflow加载和评估模型的脚本
-- `MLFLOW_README.md`: MLflow集成的详细说明
 
 ## 环境要求
 
@@ -142,7 +141,7 @@ python load_from_mlflow.py --run-id <RUN_ID>
    - 计算并记录整体准确率
    - 分析笔画分布
 
-有关MLflow集成的详细信息，请参阅 [MLFLOW_README.md](./MLFLOW_README.md)。
+<!-- 有关MLflow集成的详细信息，请参阅 [MLFLOW_README.md](./MLFLOW_README.md)。 -->
 
 ## 改进策略
 
