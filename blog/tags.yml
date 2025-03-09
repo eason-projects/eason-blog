@@ -1,3 +1,8 @@
+bluetooth:
+  label: Bluetooth
+  permalink: /bluetooth
+  description: Bluetooth related posts
+
 nlp:
   label: NLP
   permalink: /nlp
