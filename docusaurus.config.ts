@@ -63,7 +63,11 @@ const config: Config = {
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
           exclude: [
-            '**/venv/**'
+            '**/venv/**',
+            '**/build/**',
+            '**/node_modules/**',
+            '**/dist/**',
+            '**/README.md',
           ],
           // Add these options to enable and configure the blog sidebar
           blogSidebarTitle: 'All Posts',
