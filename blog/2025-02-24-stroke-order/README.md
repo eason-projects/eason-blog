@@ -61,24 +61,41 @@ python train_with_augmentation.py --max_chars 7000 --augmentation_factor 12 --ba
 #### 使用强化学习训练笔顺预测模型：
 
 ```bash
-python train.py
+# 从头开始训练新模型
+python train.py --mode train
+
+# 从现有模型继续训练
+python train.py --mode train --model best_stroke_order_model --timesteps 50000 --lr 0.0001
+
+# 使用自定义输出模型名称
+python train.py --mode train --output my_custom_model_name
+
+# 预测模式
+python train.py --mode predict --model best_stroke_order_model --samples 20
+
+# 测试数据集
+python train.py --mode test_dataset
 ```
 
 训练过程中的指标、参数和模型将自动记录到MLflow中。
 
 #### 主要参数说明：
 
+- `--mode`: 运行模式，可选 'train'（训练）, 'predict'（预测）或 'test_dataset'（测试数据集）
+- `--model`: 用于继续训练或预测的现有模型路径
+- `--samples`: 预测模式下的样本数量
+- `--timesteps`: 训练的总时间步数
+- `--lr`: 学习率
+- `--output`: 输出模型的自定义名称（不含.zip扩展名）
 - `--max_chars`: 使用的最大字符数量
 - `--augmentation_factor`: 每个样本创建的增强版本数量
 - `--use_balanced_dataset`: 使用平衡采样数据集而非数据增强
 - `--visualize_augmentations`: 可视化数据增强效果
 - `--batch_size`: 批量大小
 - `--num_epochs`: 训练轮数
-- `--learning_rate`: 学习率
 - `--use_focal_loss`: 使用焦点损失函数
 - `--use_weighted_loss`: 使用加权交叉熵损失函数
 - `--stroke_count_loss_weight`: 笔画数损失的权重
-- `--output_dir`: 输出目录
 - `--use_mlflow`: 使用MLflow跟踪训练过程
 
 ### 测试模型

@@ -7,6 +7,7 @@ import torch
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 import mlflow
 import os
+import argparse
 from datetime import datetime
 
 # Import the pretrained CNN model
@@ -98,12 +99,12 @@ class StrokeOrderEnv(gym.Env):
 class StrokeOrderEvalCallback(BaseCallback):
     """Custom callback for evaluating stroke order prediction"""
     
-    def __init__(self, eval_env, eval_freq=1000, n_eval_episodes=5, verbose=1):
+    def __init__(self, eval_env, eval_freq=1000, n_eval_episodes=5, verbose=1, best_mean_reward=-np.inf):
         super().__init__(verbose)
         self.eval_env = eval_env
         self.eval_freq = eval_freq
         self.n_eval_episodes = n_eval_episodes
-        self.best_mean_reward = -np.inf
+        self.best_mean_reward = best_mean_reward
         self.last_mean_reward = -np.inf
         
     def _on_step(self) -> bool:
@@ -191,77 +192,11 @@ class StrokeOrderEvalCallback(BaseCallback):
             
         return True
 
-def train():
-    # Start MLflow run
-    with mlflow.start_run(run_name=f"stroke_order_training_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
-        # Check if MPS is available
-        if torch.backends.mps.is_available():
-            device = torch.device("mps")
-            print("Using MPS device for training")
-        else:
-            device = torch.device("cpu")
-            print("MPS not available, using CPU")
-
-        # Create environments (one for training, one for evaluation)
-        env = DummyVecEnv([lambda: StrokeOrderEnv()])
-        eval_env = DummyVecEnv([lambda: StrokeOrderEnv()])
-        pretrained_model_path = 'augmented_model_final_20250302_145758.pth'
-        
-        # Create model with pretrained feature extractor
-        policy_kwargs = dict(
-            features_extractor_class=PretrainedCombinedExtractor,
-            # You can pass additional arguments to the feature extractor
-            features_extractor_kwargs=dict(
-                pretrained_model_path=pretrained_model_path  # Path to the pretrained model
-            )
-        )
-        
-        # Hyperparameters
-        learning_rate = 0.0003
-        n_steps = 2048
-        batch_size = 64
-        n_epochs = 10
-        gamma = 0.99
-        
-        model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
-                    verbose=1, learning_rate=learning_rate, n_steps=n_steps,
-                    batch_size=batch_size, n_epochs=n_epochs, gamma=gamma,
-                    device=device)
-        
-        # Log parameters to MLflow
-        mlflow.log_param("learning_rate", learning_rate)
-        mlflow.log_param("n_steps", n_steps)
-        mlflow.log_param("batch_size", batch_size)
-        mlflow.log_param("n_epochs", n_epochs)
-        mlflow.log_param("gamma", gamma)
-        mlflow.log_param("device", str(device))
-        mlflow.log_param("pretrained_model", pretrained_model_path)
-        
-        # Create callback
-        eval_callback = StrokeOrderEvalCallback(
-            eval_env=eval_env,
-            eval_freq=5000,
-            n_eval_episodes=20,
-            verbose=1
-        )
-        
-        # Train model with callback
-        model.learn(
-            total_timesteps=100000,
-            progress_bar=True,
-            callback=eval_callback
-        )
-        
-        # Save final model
-        model.save("final_stroke_order_model")
-        
-        # Log final model to MLflow
-        mlflow.log_artifact("final_stroke_order_model.zip", artifact_path="models")
-
 def predict_strokes(model_path, num_samples=5):
     """Load a trained model and predict stroke order for random characters"""
     # Start MLflow run for prediction
-    with mlflow.start_run(run_name=f"stroke_order_prediction_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    with mlflow.start_run(run_name=f"stroke_order_prediction_{timestamp}"):
         # Log the model path being used
         mlflow.log_param("model_path", model_path)
         mlflow.log_param("num_samples", num_samples)
@@ -375,9 +310,155 @@ if __name__ == "__main__":
         print(sample['character'])
         print(sample['stroke_count'])
 
-    # test_dataset()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Train or evaluate stroke order prediction model')
+    parser.add_argument('--mode', type=str, default='train', choices=['train', 'predict', 'test_dataset'],
+                        help='Mode to run: train, predict, or test_dataset')
+    parser.add_argument('--model', type=str, default=None,
+                        help='Path to existing model for continued training or prediction')
+    parser.add_argument('--samples', type=int, default=10,
+                        help='Number of samples for prediction')
+    parser.add_argument('--timesteps', type=int, default=100000,
+                        help='Total timesteps for training')
+    parser.add_argument('--lr', type=float, default=0.0003,
+                        help='Learning rate for training')
+    parser.add_argument('--output', type=str, default=None,
+                        help='Custom name for the output model (without .zip extension)')
+    
+    args = parser.parse_args()
+    
+    if args.mode == 'test_dataset':
+        test_dataset()
+    elif args.mode == 'train':
+        # Update the train function to accept additional parameters
+        def train_with_args(existing_model_path=None):
+            # Start MLflow run
+            with mlflow.start_run(run_name=f"stroke_order_training_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+                # Check if MPS is available
+                if torch.backends.mps.is_available():
+                    device = torch.device("mps")
+                    print("Using MPS device for training")
+                else:
+                    device = torch.device("cpu")
+                    print("MPS not available, using CPU")
 
-    # Uncomment one of these:
-    train()
-    # predict_strokes("best_stroke_order_model", num_samples=10)
-    # predict_strokes("final_stroke_order_model", num_samples=100)
+                # Create environments (one for training, one for evaluation)
+                env = DummyVecEnv([lambda: StrokeOrderEnv()])
+                eval_env = DummyVecEnv([lambda: StrokeOrderEnv()])
+                pretrained_model_path = 'augmented_model_final_20250302_145758.pth'
+                
+                # Create model with pretrained feature extractor
+                policy_kwargs = dict(
+                    features_extractor_class=PretrainedCombinedExtractor,
+                    # You can pass additional arguments to the feature extractor
+                    features_extractor_kwargs=dict(
+                        pretrained_model_path=pretrained_model_path  # Path to the pretrained model
+                    )
+                )
+                
+                # Hyperparameters
+                learning_rate = args.lr
+                n_steps = 2048
+                batch_size = 64
+                n_epochs = 10
+                gamma = 0.99
+                
+                # Initialize best mean reward for the callback
+                best_mean_reward = -np.inf
+                
+                if existing_model_path:
+                    print(f"Loading existing model from {existing_model_path} for continued training")
+                    model = PPO.load(
+                        existing_model_path, 
+                        env=env,
+                        device=device
+                    )
+                    # Log that we're continuing training from an existing model
+                    mlflow.log_param("continued_training", True)
+                    mlflow.log_param("base_model", existing_model_path)
+                    
+                    # Evaluate the existing model to get its performance
+                    print("Evaluating existing model performance...")
+                    eval_env_single = StrokeOrderEnv()
+                    
+                    n_eval_episodes = 20
+                    total_rewards = 0
+                    
+                    for episode in range(n_eval_episodes):
+                        obs, _ = eval_env_single.reset()
+                        done = False
+                        episode_reward = 0
+                        
+                        while not done:
+                            obs_dict = {
+                                'image': np.expand_dims(obs['image'], axis=0),
+                                'stroke_history': np.expand_dims(obs['stroke_history'], axis=0)
+                            }
+                            
+                            action, _ = model.predict(obs_dict, deterministic=True)
+                            obs, reward, terminated, truncated, info = eval_env_single.step(action[0])
+                            done = terminated or truncated
+                            episode_reward += reward
+                        
+                        total_rewards += episode_reward
+                    
+                    # Calculate mean reward
+                    mean_reward = total_rewards / n_eval_episodes
+                    print(f"Existing model mean reward: {mean_reward:.2f}")
+                    
+                    # Set best mean reward to the existing model's performance
+                    best_mean_reward = mean_reward
+                    
+                    # Log the existing model's performance
+                    mlflow.log_metric("existing_model_mean_reward", mean_reward)
+                else:
+                    print("Creating new model from scratch")
+                    model = PPO("MultiInputPolicy", env, policy_kwargs=policy_kwargs, 
+                                verbose=1, learning_rate=learning_rate, n_steps=n_steps,
+                                batch_size=batch_size, n_epochs=n_epochs, gamma=gamma,
+                                device=device)
+                    mlflow.log_param("continued_training", False)
+                
+                # Log parameters to MLflow
+                mlflow.log_param("learning_rate", learning_rate)
+                mlflow.log_param("n_steps", n_steps)
+                mlflow.log_param("batch_size", batch_size)
+                mlflow.log_param("n_epochs", n_epochs)
+                mlflow.log_param("gamma", gamma)
+                mlflow.log_param("device", str(device))
+                mlflow.log_param("pretrained_model", pretrained_model_path)
+                mlflow.log_param("total_timesteps", args.timesteps)
+                
+                # Create callback with the best mean reward from the existing model
+                eval_callback = StrokeOrderEvalCallback(
+                    eval_env=eval_env,
+                    eval_freq=5000,
+                    n_eval_episodes=20,
+                    verbose=1,
+                    best_mean_reward=best_mean_reward
+                )
+                
+                # Train model with callback
+                model.learn(
+                    total_timesteps=args.timesteps,
+                    progress_bar=True,
+                    callback=eval_callback
+                )
+                
+                # Save final model
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                if args.output:
+                    final_model_name = args.output
+                else:
+                    final_model_name = f"final_stroke_order_model_{timestamp}"
+                model.save(final_model_name)
+                
+                # Log final model to MLflow
+                mlflow.log_artifact(f"{final_model_name}.zip", artifact_path="models")
+        
+        train_with_args(args.model)  # Pass model path (None if training from scratch)
+    elif args.mode == 'predict':
+        if not args.model:
+            print("Error: Model path must be specified for prediction mode")
+        else:
+            predict_strokes(args.model, num_samples=args.samples)
