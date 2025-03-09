@@ -1,41 +1,30 @@
-# Website
+# Eason's Technical Blog
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This is a personal technical blog built using [Docusaurus](https://docusaurus.io/), a modern static website generator. The blog focuses on machine learning, software development, and other technical topics.
 
 ### Installation
 
 ```
-$ yarn
+$ pnpm install
 ```
 
 ### Local Development
 
 ```
-$ yarn start
+$ pnpm start
 ```
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-### Build
 
-```
-$ yarn build
-```
+## Content
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+The blog contains articles on various technical topics including:
+- Machine Learning (MLflow, Ray Tune, Optuna)
+- Reinforcement Learning
+- Natural Language Processing
+- BLE Beacons
+- Development Environment Setup
+- And more
 
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Feel free to explore the `blog` directory to see all available articles.
