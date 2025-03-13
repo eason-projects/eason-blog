@@ -12,8 +12,8 @@
         <id>https://eason-projects.github.io/eason-blog/blog/gurobi</id>
         <link href="https://eason-projects.github.io/eason-blog/blog/gurobi"/>
         <updated>2025-03-13T00:00:00.000Z</updated>
-        <summary type="html"><![CDATA[本文介绍了如果熟悉Gurobi，并展开学习工作]]></summary>
-        <content type="html"><![CDATA[<p>本文介绍了如果熟悉Gurobi，并展开学习工作</p>
+        <summary type="html"><![CDATA[本文介绍了如何熟悉Gurobi，并展开学习。]]></summary>
+        <content type="html"><![CDATA[<p>本文介绍了如何熟悉Gurobi，并展开学习。</p>
 <h2 class="anchor anchorWithStickyNavbar_W39x" id="安装">安装<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%AE%89%E8%A3%85" class="hash-link" aria-label="Direct link to 安装" title="Direct link to 安装">​</a></h2>
 <h3 class="anchor anchorWithStickyNavbar_W39x" id="通过docker使用gurobi">通过Docker使用Gurobi<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E9%80%9A%E8%BF%87docker%E4%BD%BF%E7%94%A8gurobi" class="hash-link" aria-label="Direct link to 通过Docker使用Gurobi" title="Direct link to 通过Docker使用Gurobi">​</a></h3>
 <p>我们可以运行如下命令启动基于Docker的Python Jupyter的是运行环境。
