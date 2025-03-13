@@ -23,7 +23,11 @@
 <a href="http://localhost:10888/" target="_blank" rel="noopener noreferrer">http://localhost:10888/</a>来查看Jupyter环境。
 如下图所示：</p>
 <p><img decoding="async" loading="lazy" alt="Jupyter landing page" src="https://eason-projects.github.io/eason-blog/assets/images/jupyter-landing-page-397fdc6693dc0e6e13085844358d96ab.png" width="2588" height="1752" class="img_QRCw"></p>
-<p>我们打开任意一个文件夹，即可开始进行Gurobi的案例研究。</p>]]></content>
+<p>我们打开任意一个文件夹，即可开始进行Gurobi的案例研究。</p>
+<h2 class="anchor anchorWithStickyNavbar_W39x" id="参考资料">参考资料<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99" class="hash-link" aria-label="Direct link to 参考资料" title="Direct link to 参考资料">​</a></h2>
+<ul>
+<li>Gurobi官方入门指南: <a href="https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer" target="_blank" rel="noopener noreferrer">https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer</a></li>
+</ul>]]></content>
         <author>
             <name>Eason G.</name>
             <uri>https://github.com/e10101</uri>
