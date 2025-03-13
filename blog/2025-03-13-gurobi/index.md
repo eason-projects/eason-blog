@@ -28,3 +28,7 @@ docker run -p 10888:8888 gurobi/modeling-examples
 ![Jupyter landing page](./jupyter-landing-page.png)
 
 我们打开任意一个文件夹，即可开始进行Gurobi的案例研究。
+
+## 参考资料
+
+- Gurobi官方入门指南: [https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer](https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer)
