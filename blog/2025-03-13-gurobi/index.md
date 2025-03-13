@@ -6,7 +6,7 @@ tags: [or]
 draft: false
 ---
 
-本文介绍了如果熟悉Gurobi，并展开学习工作
+本文介绍了如何熟悉Gurobi，并展开学习。
 
 <!-- truncate -->
 
