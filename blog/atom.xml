@@ -2,11 +2,34 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://eason-projects.github.io/eason-blog/blog</id>
     <title>Eason's Blog Blog</title>
-    <updated>2025-03-09T00:00:00.000Z</updated>
+    <updated>2025-03-13T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://eason-projects.github.io/eason-blog/blog"/>
     <subtitle>Eason's Blog Blog</subtitle>
     <icon>https://eason-projects.github.io/eason-blog/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[Gurobi 101]]></title>
+        <id>https://eason-projects.github.io/eason-blog/blog/gurobi</id>
+        <link href="https://eason-projects.github.io/eason-blog/blog/gurobi"/>
+        <updated>2025-03-13T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[本文介绍了如果熟悉Gurobi，并展开学习工作]]></summary>
+        <content type="html"><![CDATA[<p>本文介绍了如果熟悉Gurobi，并展开学习工作</p>
+<h2 class="anchor anchorWithStickyNavbar_W39x" id="安装">安装<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%AE%89%E8%A3%85" class="hash-link" aria-label="Direct link to 安装" title="Direct link to 安装">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_W39x" id="通过docker使用gurobi">通过Docker使用Gurobi<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E9%80%9A%E8%BF%87docker%E4%BD%BF%E7%94%A8gurobi" class="hash-link" aria-label="Direct link to 通过Docker使用Gurobi" title="Direct link to 通过Docker使用Gurobi">​</a></h3>
+<p>我们可以运行如下命令启动基于Docker的Python Jupyter的是运行环境。
+该环境默认提供了多种的Python Notebook案例，我们可以择取来学习Gurobi。</p>
+<div class="language-bash codeBlockContainer_gA8_ theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_sPiI"><pre tabindex="0" class="prism-code language-bash codeBlock_WGcI thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_UUMe"><span class="token-line" style="color:#393A34"><span class="token plain">docker run -p 10888:8888 gurobi/modeling-examples</span><br></span></code></pre><div class="buttonGroup_m2GY"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_AAa7" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_mgjV"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_pZQF"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>运行命令后，我们打开：
+<a href="http://localhost:10888/" target="_blank" rel="noopener noreferrer">http://localhost:10888/</a>来查看Jupyter环境。
+如下图所示：</p>
+<p><img decoding="async" loading="lazy" alt="Jupyter landing page" src="https://eason-projects.github.io/eason-blog/assets/images/jupyter-landing-page-397fdc6693dc0e6e13085844358d96ab.png" width="2588" height="1752" class="img_QRCw"></p>
+<p>我们打开任意一个文件夹，即可开始进行Gurobi的案例研究。</p>]]></content>
+        <author>
+            <name>Eason G.</name>
+            <uri>https://github.com/e10101</uri>
+        </author>
+        <category label="Operation Research" term="Operation Research"/>
+    </entry>
     <entry>
         <title type="html"><![CDATA[使用Python检测蓝牙信号]]></title>
         <id>https://eason-projects.github.io/eason-blog/blog/ble-beacon</id>
