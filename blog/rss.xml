@@ -17,17 +17,27 @@
             <content:encoded><![CDATA[<p>本文介绍了如何熟悉Gurobi，并展开学习。</p>
 <h2 class="anchor anchorWithStickyNavbar_W39x" id="安装">安装<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%AE%89%E8%A3%85" class="hash-link" aria-label="Direct link to 安装" title="Direct link to 安装">​</a></h2>
 <h3 class="anchor anchorWithStickyNavbar_W39x" id="通过docker使用gurobi">通过Docker使用Gurobi<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E9%80%9A%E8%BF%87docker%E4%BD%BF%E7%94%A8gurobi" class="hash-link" aria-label="Direct link to 通过Docker使用Gurobi" title="Direct link to 通过Docker使用Gurobi">​</a></h3>
-<p>我们可以运行如下命令启动基于Docker的Python Jupyter的是运行环境。
+<p>我们可以运行如下命令启动基于Docker的Python JupyterLab的运行环境。
 该环境默认提供了多种的Python Notebook案例，我们可以择取来学习Gurobi。</p>
 <div class="language-bash codeBlockContainer_gA8_ theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_sPiI"><pre tabindex="0" class="prism-code language-bash codeBlock_WGcI thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_UUMe"><span class="token-line" style="color:#393A34"><span class="token plain">docker run -p 10888:8888 gurobi/modeling-examples</span><br></span></code></pre><div class="buttonGroup_m2GY"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_AAa7" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_mgjV"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_pZQF"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
 <p>运行命令后，我们打开：
-<a href="http://localhost:10888/" target="_blank" rel="noopener noreferrer">http://localhost:10888/</a>来查看Jupyter环境。
+<a href="http://localhost:10888/lab" target="_blank" rel="noopener noreferrer">http://localhost:10888/lab</a>来查看JupyterLab环境。
 如下图所示：</p>
 <p><img decoding="async" loading="lazy" alt="Jupyter landing page" src="https://eason-projects.github.io/eason-blog/assets/images/jupyter-landing-page-397fdc6693dc0e6e13085844358d96ab.png" width="2588" height="1752" class="img_QRCw"></p>
 <p>我们打开任意一个文件夹，即可开始进行Gurobi的案例研究。</p>
+<h2 class="anchor anchorWithStickyNavbar_W39x" id="二进制整数规划">二进制整数规划<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%95%B4%E6%95%B0%E8%A7%84%E5%88%92" class="hash-link" aria-label="Direct link to 二进制整数规划" title="Direct link to 二进制整数规划">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_W39x" id="分支定界算法">分支定界算法<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%88%86%E6%94%AF%E5%AE%9A%E7%95%8C%E7%AE%97%E6%B3%95" class="hash-link" aria-label="Direct link to 分支定界算法" title="Direct link to 分支定界算法">​</a></h3>
+<p>首先对问题进行定义，然后通过线性规划松弛（Linear Programming Relaxation）来获得小数解（作为初始的上界或者下界）。
+松弛的含义就是暂时去掉结果必须是整数的限制，先通过小数来求一个在当前可行域内的全局最优小数解，作为后续分支的参考界限。</p>
+<p>然后，通过分支将问题拆解为多个子问题，针对某个变量的取值添加整数约束，从而缩小解空间，探索可能的整数解。
+依次遍历部分子问题，并通过剪枝（Pruning），提前终止那些目标函数值比当前已知界更差的分支，以减少计算量。
+通过不断更新上界和下界，逐步收敛，直到找到全局最优的整数解，或者所有分支都被探索或剪枝，算法终止。</p>
+<p><img decoding="async" loading="lazy" alt="Branch and Bound Algorithm Example" src="https://eason-projects.github.io/eason-blog/assets/images/branch-and-bound-youtube-screenshot-5beeedd05dca0036df8cfae3ed6ac030.png" width="2390" height="1370" class="img_QRCw">
+<em><a href="https://youtu.be/cEcS13Ku1i8?t=516" target="_blank" rel="noopener noreferrer">Branch and bound algorithm example</a></em></p>
 <h2 class="anchor anchorWithStickyNavbar_W39x" id="参考资料">参考资料<a href="https://eason-projects.github.io/eason-blog/blog/gurobi#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99" class="hash-link" aria-label="Direct link to 参考资料" title="Direct link to 参考资料">​</a></h2>
 <ul>
 <li>Gurobi官方入门指南: <a href="https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer" target="_blank" rel="noopener noreferrer">https://support.gurobi.com/hc/en-us/articles/14799677517585-Getting-Started-with-Gurobi-Optimizer</a></li>
+<li>Branch and bound algorithm example: <a href="https://www.youtube.com/watch?v=cEcS13Ku1i8" target="_blank" rel="noopener noreferrer">https://www.youtube.com/watch?v=cEcS13Ku1i8</a></li>
 </ul>]]></content:encoded>
             <category>Operation Research</category>
         </item>
