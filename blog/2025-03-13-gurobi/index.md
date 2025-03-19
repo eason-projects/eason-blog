@@ -163,6 +163,102 @@ select[water], 1.0
 至此，我们的求解工作完成。
 我们实现了一个非常简单的运筹优化求解的动作。
 
+## 整数规划
+
+在[社交媒体上](https://x.com/rainmaker1973/status/1901639842150125637)看到这样一个问题：
+
+![Area of blue rectangle](./blue-rectangle.png)
+
+根据已知条件求解蓝色区域的面积。
+
+很显然，我们可以通过Gurobi来求解，具体代码如下：
+
+```python
+# Import Gurobi
+import gurobipy as gp
+
+# Create a new model
+m = gp.Model("Size")
+
+# Define variables
+height = m.addVar(vtype=gp.GRB.INTEGER, name="height")
+width = m.addVar(vtype=gp.GRB.INTEGER, name="width")
+x1 = m.addVar(vtype=gp.GRB.INTEGER, name="x1")
+x2 = m.addVar(vtype=gp.GRB.INTEGER, name="x2")
+
+# Define constraints
+m.addConstr(x1 + width == 7, "7m")
+m.addConstr(x2 + width == 8, "8m")
+m.addConstr(x1 * height == 20, "20m2")
+m.addConstr(x2 * height == 25, "25m2")
+
+# Define objective
+m.setObjective(height * width, gp.GRB.MAXIMIZE)
+
+# Solve
+m.optimize()
+
+# Print values
+m.getVars()
+```
+
+我们模型输出的结果是：
+
+```plaintext
+Gurobi Optimizer version 12.0.1 build v12.0.1rc0 (linux64 - "Debian GNU/Linux 11 (bullseye)")
+
+CPU model: Intel(R) Core(TM) i7-7820HQ CPU @ 2.90GHz, instruction set [SSE2|AVX|AVX2]
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Optimize a model with 2 rows, 4 columns and 4 nonzeros
+Model fingerprint: 0x9c0c59c0
+Model has 1 quadratic objective term
+Model has 2 quadratic constraints
+Variable types: 0 continuous, 4 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  QMatrix range    [1e+00, 1e+00]
+  Objective range  [0e+00, 0e+00]
+  QObjective range [2e+00, 2e+00]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [7e+00, 8e+00]
+  QRHS range       [2e+01, 2e+01]
+Presolve time: 0.00s
+Presolved: 12 rows, 6 columns, 25 nonzeros
+Presolved model has 3 bilinear constraint(s)
+
+Solving non-convex MIQCP
+
+Variable types: 2 continuous, 4 integer (0 binary)
+
+Root relaxation: objective 1.500000e+01, 0 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0      15.0000000   15.00000  0.00%     -    0s
+
+Explored 1 nodes (0 simplex iterations) in 0.09 seconds (0.00 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 1: 15 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.500000000000e+01, best bound 1.500000000000e+01, gap 0.0000%
+```
+
+同时变量数值为：
+
+```plaintext
+[<gurobi.Var height (value 5.0)>,
+ <gurobi.Var width (value 3.0)>,
+ <gurobi.Var x1 (value 4.0)>,
+ <gurobi.Var x2 (value 5.0)>]
+```
+
+因此，蓝色区域的面积为 **3x5 = 15**平方米。
+
+
 ## 分支定界算法
 
 首先对问题进行定义，然后通过线性规划松弛（Linear Programming Relaxation）来获得小数解（作为初始的上界或者下界）。
