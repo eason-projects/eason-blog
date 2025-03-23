@@ -4,6 +4,8 @@
 /data/
 build/
 
+fonts/
+
 venv/
 
 # Logs
